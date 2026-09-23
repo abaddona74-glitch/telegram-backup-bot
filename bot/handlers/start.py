@@ -2,8 +2,8 @@
 start.py — /start command and bot connection instructions.
 """
 import logging
-from aiogram import Router, Bot
-from aiogram.types import Message
+from aiogram import Router, Bot, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart
 
 from bot.config import Config
@@ -22,16 +22,34 @@ Bu bot sizning chatlaringizdagi:
 ━━━━━━━━━━━━━━━━━━━━
 🔌 <b>Botni ulash uchun:</b>
 
-1. Telegram <b>Settings</b> → <b>Business</b> → <b>Chat Automation</b>
-2. <b>"Bot"</b> maydoniga ushbu botni tanlang: @{username}
-3. "Include all chats" yoki kerakli chatlarni tanlang
+1. Quyidagi <b>"🔌 Connect"</b> tugmasini bosing
+2. <b>Telegram Business</b> → <b>Chat Automation</b> (yoki <b>Bots</b>) bo'limiga o'ting
+3. <b>"Bot"</b> maydoniga ushbu botni tanlang: @{username}
 4. <b>Save</b> tugmasini bosing ✅
 
-⚠️ <b>Eslatma:</b> Telegram Business yoki Premium kerak.
+⚠️ <i>Eslatma: Bu funksiya Telegram Premium/Business akkauntlarda ishlaydi.</i>
 ━━━━━━━━━━━━━━━━━━━━
-
-Bot ulangandan so'ng barcha xabarlar avtomatik kuzatiladi!
 """
+
+
+def get_start_keyboard(username: str) -> InlineKeyboardMarkup:
+    """Create inline keyboard with Connect button."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔌 Connect",
+                    url="tg://settings/edit",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="ℹ️ Qanday ishlaydi?",
+                    callback_data="how_it_works",
+                )
+            ],
+        ]
+    )
 
 
 @router.message(CommandStart())
@@ -51,4 +69,23 @@ async def cmd_start(message: Message, bot: Bot, config: Config) -> None:
     await message.answer(
         CONNECT_INSTRUCTIONS.format(username=username),
         parse_mode="HTML",
+        reply_markup=get_start_keyboard(username),
     )
+
+
+@router.callback_query(F.data == "how_it_works")
+async def cb_how_it_works(callback: CallbackQuery, bot: Bot) -> None:
+    """Explain how the bot works upon callback query."""
+    me = await bot.get_me()
+    username = me.username or "your_bot"
+
+    text = (
+        "📖 <b>Bot qanday ishlaydi?</b>\n\n"
+        "1. Siz botni Telegram Business orqali akkauntingizga ulaysiz.\n"
+        "2. Suhbatdoshlaringiz sizga yuborgan va keyin o'chirib yuborgan xabarlari bazada saqlanadi.\n"
+        "3. Xabar o'chirilishi bilan bot sizga xabarning asl matni yoki rasmini yuboradi.\n"
+        "4. Tahrirlangan xabarlarda ham eski va yangi variantlar ko'rsatiladi.\n\n"
+        f"Ulash uchun: <code>@{username}</code>"
+    )
+    await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
