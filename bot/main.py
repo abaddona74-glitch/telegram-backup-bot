@@ -86,11 +86,33 @@ def create_dispatcher(config) -> Dispatcher:
 
 
 async def run_polling(bot: Bot, dp: Dispatcher, config) -> None:
-    """Run bot in long-polling mode (for local development)."""
+    """Run bot in long-polling mode (with health check port for Render/cloud)."""
     await on_startup(bot, config, dp)
+
+    runner = None
+    if config.webhook_port:
+        try:
+            app = web.Application()
+
+            async def health(_req):
+                return web.Response(text="Bot is running (polling mode)!")
+
+            app.router.add_get("/", health)
+            app.router.add_get("/health", health)
+
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, host="0.0.0.0", port=config.webhook_port)
+            await site.start()
+            logger.info("Health check server listening on port %s", config.webhook_port)
+        except Exception as e:
+            logger.warning("Could not start health check server: %s", e)
+
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        if runner:
+            await runner.cleanup()
         await on_shutdown(bot, config)
 
 
