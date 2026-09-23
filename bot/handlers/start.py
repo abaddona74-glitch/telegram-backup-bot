@@ -37,8 +37,8 @@ Bot ulangandan so'ng barcha xabarlar avtomatik kuzatiladi!
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot: Bot, config: Config) -> None:
     """Send connection instructions when user types /start."""
-    # Only the owner should use this
-    if message.from_user and message.from_user.id != config.owner_id:
+    # Only owners configured in OWNER_IDS should use this
+    if message.from_user and message.from_user.id not in config.owner_ids:
         await message.answer(
             "⛔️ Bu bot shaxsiy foydalanish uchun mo'ljallangan.",
             parse_mode="HTML",

@@ -8,7 +8,7 @@ from aiogram import Router, Bot
 from aiogram.types import BusinessMessagesDeleted
 
 from bot.config import Config
-from bot.database import get_message, delete_message
+from bot.database import get_message, delete_message, get_connection_owner
 from bot.utils.formatters import format_deleted_message
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ async def handle_deleted_messages(
     """Notify owner about each deleted business message."""
     bc_id = event.business_connection_id
     chat_id = event.chat.id
+    target_id = await get_connection_owner(config.db_path, bc_id) or config.owner_id
 
     for msg_id in event.message_ids:
         row = await get_message(config.db_path, msg_id, bc_id, chat_id)
@@ -32,7 +33,7 @@ async def handle_deleted_messages(
             logger.warning("Deleted message %s not found in DB", msg_id)
             # Still notify — message not in our DB
             await bot.send_message(
-                chat_id=config.owner_id,
+                chat_id=target_id,
                 text=(
                     "🗑 <b>Xabar o'chirildi!</b>\n\n"
                     f"📌 <b>Chat ID:</b> <code>{chat_id}</code>\n"
@@ -47,18 +48,18 @@ async def handle_deleted_messages(
         text = format_deleted_message(row)
         try:
             await bot.send_message(
-                chat_id=config.owner_id,
+                chat_id=target_id,
                 text=text,
                 parse_mode="HTML",
             )
 
             # If the deleted message had media — resend it
             if row.get("file_id") and row.get("media_type"):
-                await _resend_media(bot, config.owner_id, row)
+                await _resend_media(bot, target_id, row)
 
-            logger.info("Notified owner about deleted message %s", msg_id)
+            logger.info("Notified owner %s about deleted message %s", target_id, msg_id)
         except Exception as e:
-            logger.error("Failed to notify owner about deleted msg %s: %s", msg_id, e)
+            logger.error("Failed to notify owner %s about deleted msg %s: %s", target_id, msg_id, e)
         finally:
             # Clean up DB entry
             await delete_message(config.db_path, msg_id, bc_id, chat_id)

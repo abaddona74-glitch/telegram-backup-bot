@@ -8,7 +8,7 @@ from aiogram import Router, Bot
 from aiogram.types import Message
 
 from bot.config import Config
-from bot.database import get_message, save_message
+from bot.database import get_message, save_message, get_connection_owner
 from bot.utils.media_saver import extract_message_data
 from bot.utils.formatters import format_edited_message
 
@@ -45,16 +45,17 @@ async def handle_edited_message(message: Message, bot: Bot, config: Config) -> N
         return
 
     text = format_edited_message(old, new_text, new_caption)
+    target_id = await get_connection_owner(config.db_path, bc_id) or config.owner_id
 
     try:
         await bot.send_message(
-            chat_id=config.owner_id,
+            chat_id=target_id,
             text=text,
             parse_mode="HTML",
         )
-        logger.info("Notified owner about edited message %s", message.message_id)
+        logger.info("Notified owner %s about edited message %s", target_id, message.message_id)
     except Exception as e:
-        logger.error("Failed to notify owner about edit: %s", e)
+        logger.error("Failed to notify owner %s about edit: %s", target_id, e)
 
     # Update DB with the new version
     new_data = extract_message_data(message, bc_id)

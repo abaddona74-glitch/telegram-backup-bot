@@ -33,6 +33,14 @@ async def init_db(db_path: str) -> None:
             CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_unique
             ON messages(message_id, business_connection_id, chat_id)
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS business_connections (
+                connection_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                is_enabled INTEGER DEFAULT 1,
+                updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+            )
+        """)
         await db.commit()
 
 
@@ -90,3 +98,35 @@ async def delete_message(
             WHERE message_id = ? AND business_connection_id = ? AND chat_id = ?
         """, (message_id, business_connection_id, chat_id))
         await db.commit()
+
+
+async def save_business_connection(
+    db_path: str,
+    connection_id: str,
+    user_id: int,
+    is_enabled: int = 1,
+) -> None:
+    """Save or update business connection owner mapping."""
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute("""
+            INSERT INTO business_connections (connection_id, user_id, is_enabled, updated_at)
+            VALUES (?, ?, ?, strftime('%s', 'now'))
+            ON CONFLICT(connection_id) DO UPDATE SET
+                user_id = excluded.user_id,
+                is_enabled = excluded.is_enabled,
+                updated_at = excluded.updated_at
+        """, (connection_id, user_id, is_enabled))
+        await db.commit()
+
+
+async def get_connection_owner(db_path: str, connection_id: str) -> Optional[int]:
+    """Get the user_id that owns the specified business connection."""
+    if not connection_id:
+        return None
+    async with aiosqlite.connect(db_path) as db:
+        async with db.execute("""
+            SELECT user_id FROM business_connections
+            WHERE connection_id = ?
+        """, (connection_id,)) as cursor:
+            row = await cursor.fetchone()
+            return int(row[0]) if row else None

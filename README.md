@@ -29,7 +29,7 @@ cp .env.example .env
 `.env` ichiga to'ldiring:
 ```
 BOT_TOKEN=1234567890:AAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-OWNER_ID=123456789
+OWNER_IDS=123456789,987654321
 ```
 
 ### 4. Lokal ishga tushirish (test uchun)
@@ -67,7 +67,7 @@ Railway dashboard → Variables:
 | Kalit | Qiymat |
 |-------|--------|
 | `BOT_TOKEN` | BotFather'dan olingan token |
-| `OWNER_ID` | Sizning Telegram ID |
+| `OWNER_IDS` | Telegram ID'lar (bir nechta bo'lsa vergul bilan: `123456789,987654321`) |
 | `WEBHOOK_HOST` | Railway domeningiz (masalan `https://xxx.railway.app`) |
 | `WEBHOOK_PORT` | `8080` |
 

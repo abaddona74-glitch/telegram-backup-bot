@@ -15,7 +15,7 @@ from aiohttp import web
 
 from bot.config import load_config
 from bot.database import init_db
-from bot.handlers import business, deleted, edited, start
+from bot.handlers import business, connection, deleted, edited, start
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,17 +39,24 @@ async def on_startup(bot: Bot, config, dp: Dispatcher) -> None:
         await bot.delete_webhook(drop_pending_updates=True)
         logger.info("Running in polling mode")
 
-    # Notify owner that bot started
+    # Notify all configured owners that bot started
     try:
         me = await bot.get_me()
-        await bot.send_message(
-            config.owner_id,
+        startup_text = (
             f"✅ <b>Bot ishga tushdi!</b>\n\n"
             f"🤖 <code>@{me.username}</code>\n"
             f"📋 Mode: {'Webhook' if config.webhook_url else 'Polling'}\n\n"
-            "Endi chatlaringizni kuzatishim mumkin!",
-            parse_mode="HTML",
+            "Endi chatlaringizni kuzatishim mumkin!"
         )
+        for owner_id in config.owner_ids:
+            try:
+                await bot.send_message(
+                    owner_id,
+                    startup_text,
+                    parse_mode="HTML",
+                )
+            except Exception as ex:
+                logger.warning("Could not send startup message to %s: %s", owner_id, ex)
     except Exception as e:
         logger.warning("Could not send startup message: %s", e)
 
@@ -70,6 +77,7 @@ def create_dispatcher(config) -> Dispatcher:
 
     # Register routers
     dp.include_router(start.router)
+    dp.include_router(connection.router)
     dp.include_router(business.router)
     dp.include_router(deleted.router)
     dp.include_router(edited.router)
@@ -98,6 +106,13 @@ def run_webhook(bot: Bot, dp: Dispatcher, config) -> None:
 
     app.on_startup.append(startup)
     app.on_shutdown.append(shutdown)
+
+    # Health check endpoints for Render/cloud platforms
+    async def health_check(_request):
+        return web.Response(text="Bot is running!")
+
+    app.router.add_get("/", health_check)
+    app.router.add_get("/health", health_check)
 
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
     setup_application(app, dp, bot=bot)
