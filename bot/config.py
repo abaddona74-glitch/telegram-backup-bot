@@ -45,7 +45,7 @@ def load_config() -> Config:
     return Config(
         bot_token=token,
         owner_ids=owner_ids,
-        webhook_host=os.getenv("WEBHOOK_HOST", ""),
+        webhook_host=os.getenv("WEBHOOK_HOST") or os.getenv("RENDER_EXTERNAL_URL", ""),
         webhook_port=int(os.getenv("PORT") or os.getenv("WEBHOOK_PORT", "8080")),
         db_path=os.getenv("DB_PATH", "data/messages.db"),
     )
