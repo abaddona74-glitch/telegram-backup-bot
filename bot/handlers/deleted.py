@@ -21,10 +21,18 @@ async def handle_deleted_messages(
     bot: Bot,
     config: Config,
 ) -> None:
-    """Notify owner about each deleted business message."""
     bc_id = event.business_connection_id
     chat_id = event.chat.id
-    target_id = await get_connection_owner(config.db_path, bc_id) or config.owner_id
+    target_id = await get_connection_owner(config.db_path, bc_id, bot)
+    if not target_id:
+        if len(config.owner_ids) == 1:
+            target_id = config.owner_id
+        else:
+            logger.warning(
+                "Could not determine owner for business connection %s, skipping notification to protect privacy",
+                bc_id,
+            )
+            return
 
     for msg_id in event.message_ids:
         row = await get_message(config.db_path, msg_id, bc_id, chat_id)

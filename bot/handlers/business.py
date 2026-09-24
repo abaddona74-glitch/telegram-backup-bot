@@ -36,7 +36,16 @@ async def handle_business_message(message: Message, bot: Bot, config: Config) ->
 
     # If view-once media — immediately forward to connection owner
     if data["is_view_once"] and data["file_id"]:
-        target_id = await get_connection_owner(config.db_path, bc_id) or config.owner_id
+        target_id = await get_connection_owner(config.db_path, bc_id, bot)
+        if not target_id:
+            if len(config.owner_ids) == 1:
+                target_id = config.owner_id
+            else:
+                logger.warning(
+                    "Could not determine owner for business connection %s, skipping view-once forward",
+                    bc_id,
+                )
+                return
         await _forward_view_once(bot, target_id, data)
 
 

@@ -1,6 +1,10 @@
+import logging
 import os
 import aiosqlite
 from typing import Optional
+from aiogram import Bot
+
+logger = logging.getLogger(__name__)
 
 # Ensure data directory exists
 os.makedirs("data", exist_ok=True)
@@ -119,7 +123,11 @@ async def save_business_connection(
         await db.commit()
 
 
-async def get_connection_owner(db_path: str, connection_id: str) -> Optional[int]:
+async def get_connection_owner(
+    db_path: str,
+    connection_id: str,
+    bot: Optional[Bot] = None,
+) -> Optional[int]:
     """Get the user_id that owns the specified business connection."""
     if not connection_id:
         return None
@@ -129,4 +137,24 @@ async def get_connection_owner(db_path: str, connection_id: str) -> Optional[int
             WHERE connection_id = ?
         """, (connection_id,)) as cursor:
             row = await cursor.fetchone()
-            return int(row[0]) if row else None
+            if row:
+                return int(row[0])
+
+    # If missing from DB (e.g. after container restart), query Telegram API directly
+    if bot:
+        try:
+            conn = await bot.get_business_connection(connection_id)
+            if conn and conn.user:
+                user_id = conn.user.id
+                await save_business_connection(
+                    db_path,
+                    connection_id=connection_id,
+                    user_id=user_id,
+                    is_enabled=1 if conn.is_enabled else 0,
+                )
+                logger.info("Restored business connection %s owner %s from Telegram API", connection_id, user_id)
+                return user_id
+        except Exception as e:
+            logger.warning("Could not fetch business connection %s from Telegram: %s", connection_id, e)
+
+    return None

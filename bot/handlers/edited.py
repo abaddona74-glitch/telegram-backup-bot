@@ -44,8 +44,18 @@ async def handle_edited_message(message: Message, bot: Bot, config: Config) -> N
         logger.debug("Message %s re-edited with same content, skipping", message.message_id)
         return
 
+    target_id = await get_connection_owner(config.db_path, bc_id, bot)
+    if not target_id:
+        if len(config.owner_ids) == 1:
+            target_id = config.owner_id
+        else:
+            logger.warning(
+                "Could not determine owner for business connection %s, skipping edit notification",
+                bc_id,
+            )
+            return
+
     text = format_edited_message(old, new_text, new_caption)
-    target_id = await get_connection_owner(config.db_path, bc_id) or config.owner_id
 
     try:
         await bot.send_message(
