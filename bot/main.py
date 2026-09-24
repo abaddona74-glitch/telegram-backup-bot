@@ -33,7 +33,11 @@ async def on_startup(bot: Bot, config, dp: Dispatcher) -> None:
     logger.info("Database initialized: %s", config.db_path)
 
     if config.webhook_url:
-        await bot.set_webhook(config.webhook_url)
+        await bot.set_webhook(
+            config.webhook_url,
+            allowed_updates=dp.resolve_used_update_types(),
+            drop_pending_updates=False,
+        )
         logger.info("Webhook set: %s", config.webhook_url)
     else:
         await bot.delete_webhook(drop_pending_updates=True)
@@ -63,8 +67,6 @@ async def on_startup(bot: Bot, config, dp: Dispatcher) -> None:
 
 async def on_shutdown(bot: Bot, config) -> None:
     """Actions on bot shutdown."""
-    if config.webhook_url:
-        await bot.delete_webhook()
     logger.info("Bot stopped")
 
 
