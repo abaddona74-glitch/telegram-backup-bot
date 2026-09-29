@@ -52,6 +52,13 @@ async def handle_deleted_messages(
             )
             continue
 
+        # If the deleted message was sent by the owner, skip notification
+        from_user_id = row.get("from_user_id")
+        if from_user_id and (from_user_id == target_id or from_user_id in config.owner_ids):
+            logger.info("Message %s deleted by owner (%s), skipping notification", msg_id, from_user_id)
+            await delete_message(config.db_path, msg_id, bc_id, chat_id)
+            continue
+
         # Format and send notification
         text = format_deleted_message(row)
         try:

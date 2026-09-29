@@ -45,7 +45,10 @@ async def handle_business_message(message: Message, bot: Bot, config: Config) ->
                     "Could not determine owner for business connection %s, skipping view-once forward",
                     bc_id,
                 )
-                return
+        # Do not forward if sent by the owner themselves
+        if data.get("from_user_id") and (data["from_user_id"] == target_id or data["from_user_id"] in config.owner_ids):
+            return
+
         await _forward_view_once(bot, target_id, data)
 
 

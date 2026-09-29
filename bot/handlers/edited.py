@@ -55,6 +55,14 @@ async def handle_edited_message(message: Message, bot: Bot, config: Config) -> N
             )
             return
 
+    # If the message was sent by the owner, update DB silently and skip notification
+    from_user_id = message.from_user.id if message.from_user else old.get("from_user_id")
+    if from_user_id and (from_user_id == target_id or from_user_id in config.owner_ids):
+        logger.debug("Message %s edited by owner (%s), updating DB silently", message.message_id, from_user_id)
+        new_data = extract_message_data(message, bc_id)
+        await save_message(config.db_path, new_data)
+        return
+
     text = format_edited_message(old, new_text, new_caption)
 
     try:
